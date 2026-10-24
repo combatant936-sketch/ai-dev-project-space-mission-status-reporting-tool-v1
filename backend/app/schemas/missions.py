@@ -26,3 +26,8 @@ class MissionOut(BaseModel):
     description: Optional[str] = None
     status: MissionStatus
     created_at: datetime
+
+
+class MissionAssignRequest(BaseModel):
+    user_ids: list[int] = Field(..., description="List of team member user IDs to assign to the mission")
+

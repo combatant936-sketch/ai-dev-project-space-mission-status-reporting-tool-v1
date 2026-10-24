@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import require_admin
 from app.models.mission import Mission
-from app.models.user import User
-from app.schemas.missions import MissionCreate, MissionOut, MissionUpdate
+from app.models.user import Role, User
+from app.schemas.missions import MissionAssignRequest, MissionCreate, MissionOut, MissionUpdate
+
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 
@@ -96,3 +97,45 @@ def delete_mission(
     db.delete(mission)
     db.commit()
     return None
+
+
+@router.post("/{id}/assign", response_model=List[int], status_code=status.HTTP_200_OK)
+def assign_mission(
+    id: int,
+    payload: MissionAssignRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Assign team members to a mission (Admin only, replace semantics)."""
+    mission = db.query(Mission).filter(Mission.id == id).first()
+    if not mission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mission not found",
+        )
+
+    if not payload.user_ids:
+        mission.assigned_users = []
+        db.commit()
+        return []
+
+    users = db.query(User).filter(User.id.in_(payload.user_ids)).all()
+    found_ids = {u.id for u in users}
+    if len(found_ids) != len(set(payload.user_ids)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="One or more user IDs do not exist",
+        )
+
+    for u in users:
+        if u.role != Role.team_member:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"User {u.id} has role {u.role.value}; only team members can be assigned",
+            )
+
+    mission.assigned_users = users
+    db.commit()
+    db.refresh(mission)
+    return [u.id for u in mission.assigned_users]
+
