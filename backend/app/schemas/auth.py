@@ -19,3 +19,9 @@ class UserResponse(BaseModel):
     email: str
     role: Role
     created_at: Optional[datetime] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
