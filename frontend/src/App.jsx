@@ -6,6 +6,7 @@ import MissionList from "./pages/MissionList";
 import MissionDetail from "./pages/MissionDetail";
 
 import MissionForm from "./pages/MissionForm";
+import ReportForm from "./pages/ReportForm";
 
 export default function App() {
   return (
@@ -61,6 +62,14 @@ export default function App() {
                 <AdminRoute>
                   <MissionDetail />
                 </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/new"
+            element={
+              <ProtectedRoute>
+                <ReportForm />
               </ProtectedRoute>
             }
           />
