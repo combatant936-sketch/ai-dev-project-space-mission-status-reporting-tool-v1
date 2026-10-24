@@ -73,9 +73,29 @@ def list_reports(
                 submitted_at=r.submitted_at,
                 reviewed=r.reviewed,
                 admin_comment=r.admin_comment,
+                current_status=r.current_status,
+                progress_update=r.progress_update,
+                work_completed=r.work_completed,
+                blockers=r.blockers,
             )
         )
     return results
+
+
+@router.get("/reports/{id}", response_model=ReportOut, status_code=status.HTTP_200_OK)
+def get_report(
+    id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Get a single report by ID (Admin only)."""
+    report = db.query(Report).filter(Report.id == id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found",
+        )
+    return report
 
 
 @router.patch("/reports/{id}/review", response_model=ReportOut, status_code=status.HTTP_200_OK)

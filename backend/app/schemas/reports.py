@@ -38,6 +38,10 @@ class ReportListItem(BaseModel):
     submitted_at: datetime
     reviewed: bool
     admin_comment: Optional[str] = None
+    current_status: Optional[str] = None
+    progress_update: Optional[str] = None
+    work_completed: Optional[str] = None
+    blockers: Optional[str] = None
 
 
 class ReportReviewRequest(BaseModel):
