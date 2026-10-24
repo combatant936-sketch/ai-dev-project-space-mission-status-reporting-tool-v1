@@ -26,3 +26,21 @@ class ReportOut(BaseModel):
     reviewed: bool
     admin_comment: Optional[str] = None
     submitted_at: datetime
+
+
+class ReportListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    mission_id: int
+    mission_title: str
+    submitter_email: str
+    submitted_at: datetime
+    reviewed: bool
+    admin_comment: Optional[str] = None
+
+
+class ReportReviewRequest(BaseModel):
+    reviewed: bool = True
+    admin_comment: Optional[str] = None
+
