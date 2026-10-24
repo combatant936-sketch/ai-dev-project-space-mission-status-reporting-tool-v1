@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import MissionList from "./pages/MissionList";
 import MissionDetail from "./pages/MissionDetail";
 
+import MissionForm from "./pages/MissionForm";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -28,6 +30,26 @@ export default function App() {
               <ProtectedRoute>
                 <AdminRoute>
                   <MissionList />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/missions/new"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <MissionForm />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/missions/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <MissionForm />
                 </AdminRoute>
               </ProtectedRoute>
             }
