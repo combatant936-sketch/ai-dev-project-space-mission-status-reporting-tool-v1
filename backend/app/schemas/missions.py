@@ -18,6 +18,9 @@ class MissionUpdate(BaseModel):
     status: Optional[MissionStatus] = Field(None, description="Current mission status")
 
 
+from app.schemas.auth import UserResponse
+
+
 class MissionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +29,8 @@ class MissionOut(BaseModel):
     description: Optional[str] = None
     status: MissionStatus
     created_at: datetime
+    assigned_users: list[UserResponse] = []
+
 
 
 class MissionAssignRequest(BaseModel):

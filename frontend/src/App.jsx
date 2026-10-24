@@ -1,7 +1,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, ProtectedRoute } from "./context/AuthContext";
+import { AuthProvider, ProtectedRoute, AdminRoute } from "./context/AuthContext";
 import Login from "./pages/Login";
+import MissionList from "./pages/MissionList";
+import MissionDetail from "./pages/MissionDetail";
 
 export default function App() {
   return (
@@ -17,6 +19,26 @@ export default function App() {
                   <h1>Mission Control Dashboard</h1>
                   <p>Welcome to Space Mission Reporting Portal</p>
                 </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/missions"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <MissionList />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/missions/:id"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <MissionDetail />
+                </AdminRoute>
               </ProtectedRoute>
             }
           />
