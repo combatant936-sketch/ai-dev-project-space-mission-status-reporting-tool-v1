@@ -166,13 +166,13 @@ def test_all_five_endpoints_require_auth(client):
     assert client.delete("/missions/1").status_code == 401
 
 
-def test_all_five_endpoints_forbidden_for_team_member(client, member_headers):
-    """All five endpoints return HTTP 403 when called by a team_member token."""
+def test_admin_endpoints_forbidden_for_team_member(client, member_headers):
+    """Admin-only modification endpoints return HTTP 403 when called by a team_member token."""
     assert client.post("/missions", json={"title": "Member Post"}, headers=member_headers).status_code == 403
-    assert client.get("/missions", headers=member_headers).status_code == 403
-    assert client.get("/missions/1", headers=member_headers).status_code == 403
     assert client.patch("/missions/1", json={"title": "Member Patch"}, headers=member_headers).status_code == 403
     assert client.delete("/missions/1", headers=member_headers).status_code == 403
+    # GET /missions is allowed for authenticated team members to filter their assigned missions
+    assert client.get("/missions", headers=member_headers).status_code == 200
 
 
 def test_create_mission_missing_title_returns_422(client, admin_headers):

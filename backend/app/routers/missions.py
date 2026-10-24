@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies import require_admin
+from app.dependencies import get_current_user, require_admin
 from app.models.mission import Mission
 from app.models.user import Role, User
 from app.schemas.missions import MissionAssignRequest, MissionCreate, MissionOut, MissionUpdate
@@ -34,9 +34,9 @@ def create_mission(
 @router.get("", response_model=List[MissionOut])
 def list_missions(
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
-    """List all missions (Admin only)."""
+    """List all missions (Accessible to authenticated users for manifest and report filtering)."""
     return db.query(Mission).all()
 
 
