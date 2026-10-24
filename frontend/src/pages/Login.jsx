@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -38,8 +41,13 @@ export default function Login() {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem("access_token", data.access_token);
+        if (typeof login === "function") {
+          login(data.access_token);
+        }
         navigate("/dashboard");
       } else if (response.status === 401) {
+
+
         const errData = await response.json().catch(() => ({}));
         setError(errData.detail || "Invalid email or password");
       } else {
