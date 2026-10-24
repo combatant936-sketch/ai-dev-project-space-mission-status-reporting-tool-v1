@@ -9,11 +9,13 @@ import MissionForm from "./pages/MissionForm";
 import ReportForm from "./pages/ReportForm";
 import ReportList from "./pages/ReportList";
 import Dashboard from "./pages/Dashboard";
+import Navbar from "./components/Navbar";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Navbar />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
