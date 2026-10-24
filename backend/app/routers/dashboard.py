@@ -39,9 +39,17 @@ def get_dashboard_stats(
         for r in recent_reports_raw
     ]
 
+    missions_by_status = {
+        MissionStatus.planned.value: db.query(Mission).filter(Mission.status == MissionStatus.planned).count(),
+        MissionStatus.in_progress.value: active_missions,
+        MissionStatus.completed.value: db.query(Mission).filter(Mission.status == MissionStatus.completed).count(),
+        MissionStatus.failed.value: db.query(Mission).filter(Mission.status == MissionStatus.failed).count(),
+    }
+
     return DashboardStatsResponse(
         total_missions=total_missions,
         active_missions=active_missions,
         pending_reports=pending_reports,
         recent_reports=recent_reports,
+        missions_by_status=missions_by_status,
     )

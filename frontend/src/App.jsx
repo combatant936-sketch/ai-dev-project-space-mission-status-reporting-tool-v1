@@ -8,6 +8,7 @@ import MissionDetail from "./pages/MissionDetail";
 import MissionForm from "./pages/MissionForm";
 import ReportForm from "./pages/ReportForm";
 import ReportList from "./pages/ReportList";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   return (
@@ -19,10 +20,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <div style={{ color: "#fff", padding: "2rem", textAlign: "center" }}>
-                  <h1>Mission Control Dashboard</h1>
-                  <p>Welcome to Space Mission Reporting Portal</p>
-                </div>
+                <Dashboard />
               </ProtectedRoute>
             }
           />
