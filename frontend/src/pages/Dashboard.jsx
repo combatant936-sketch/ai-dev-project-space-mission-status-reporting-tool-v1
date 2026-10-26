@@ -145,7 +145,7 @@ export default function Dashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1 className="dashboard-title">Mission Control Dashboard</h1>
+        <h1 className="dashboard-title">Mission Control v2</h1>
         <p className="dashboard-subtitle">
           Real-time fleet telemetry, flight readiness, and mission status reports
         </p>

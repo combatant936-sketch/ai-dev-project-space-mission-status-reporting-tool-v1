@@ -1,0 +1,37 @@
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       space_mission
+      POSTGRES_USER:     space_user
+      POSTGRES_PASSWORD: space_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U space_user -d space_mission"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Backend + Frontend (served by uvicorn) ────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://space_user:space_pass@postgres:5432/space_mission
+      # Helpers used by the pg_isready wait-loop in the Dockerfile CMD
+      DB_HOST: postgres
+      DB_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

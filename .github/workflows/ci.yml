@@ -1,0 +1,214 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  IMAGE_NAME: ai-dev-project-app
+  KIND_CLUSTER: space-mission
+  K8S_NAMESPACE: space-mission
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Frontend unit tests (Vitest)
+  # ──────────────────────────────────────────────
+  frontend-tests:
+    name: Frontend Tests (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run Vitest
+        run: npm test
+
+  # ──────────────────────────────────────────────
+  # Job 2: Backend unit tests (pytest / SQLite)
+  # ──────────────────────────────────────────────
+  backend-tests:
+    name: Backend Tests (pytest + SQLite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run pytest (SQLite)
+        run: uv run pytest -v
+
+  # ──────────────────────────────────────────────
+  # Job 3: PostgreSQL integration tests (pytest)
+  # ──────────────────────────────────────────────
+  integration-tests:
+    name: Integration Tests (pytest + PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: space_mission
+          POSTGRES_USER: space_user
+          POSTGRES_PASSWORD: space_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U space_user -d space_mission"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql+psycopg2://space_user:space_pass@localhost:5432/space_mission
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies (with dev extras)
+        run: uv sync --extra dev
+
+      - name: Run PostgreSQL integration tests
+        run: uv run pytest tests/test_integration_postgres.py -v
+
+  # ──────────────────────────────────────────────
+  # Job 4: Build image, load into kind, deploy
+  # Runs only when all test jobs pass
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Build & Deploy to kind
+    needs: [frontend-tests, backend-tests, integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Unique image tag: short git SHA + timestamp
+      - name: Set image tag
+        id: tag
+        run: |
+          SHA="${GITHUB_SHA::8}"
+          if [ -z "$SHA" ] || [ "$SHA" = "00000000" ]; then
+            SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
+          fi
+          echo "TAG=${SHA}-$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      # ── Docker ────────────────────────────────
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.TAG }} \
+            -t ${{ env.IMAGE_NAME }}:latest \
+            .
+
+      # ── kind & kubectl ────────────────────────
+      - name: Install kind
+        run: |
+          if ! command -v kind >/dev/null 2>&1; then
+            curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
+            chmod +x /usr/local/bin/kind
+          fi
+          kind version
+
+      - name: Create or connect kind cluster
+        run: |
+          kind get clusters | grep -q "^${{ env.KIND_CLUSTER }}$" || kind create cluster --name ${{ env.KIND_CLUSTER }}
+          kind export kubeconfig --name ${{ env.KIND_CLUSTER }}
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image \
+            ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.TAG }} \
+            --name ${{ env.KIND_CLUSTER }}
+
+      # ── patch manifests with new tag & deploy ─
+      - name: Install kubectl
+        run: |
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.31.2/bin/linux/amd64/kubectl"
+            chmod +x /usr/local/bin/kubectl
+          fi
+          kubectl version --client
+
+      - name: Patch image tag in app-deployment.yaml
+        run: |
+          sed -i \
+            "s|image: ${{ env.IMAGE_NAME }}:.*|image: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.TAG }}|g" \
+            k8s/app-deployment.yaml
+
+      - name: Apply manifests (first pass – creates namespace)
+        run: kubectl --context kind-${{ env.KIND_CLUSTER }} apply -f k8s/ || true
+
+      - name: Apply manifests (second pass – all resources)
+        run: kubectl --context kind-${{ env.KIND_CLUSTER }} apply -f k8s/
+
+      # ── wait for rollout ──────────────────────
+      - name: Wait for postgres rollout
+        run: |
+          kubectl --context kind-${{ env.KIND_CLUSTER }} \
+            rollout status deployment/postgres \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=120s
+
+      - name: Wait for app rollout
+        run: |
+          kubectl --context kind-${{ env.KIND_CLUSTER }} \
+            rollout status deployment/app \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=180s
+
+      # ── smoke-test the deployed pod ───────────
+      - name: Smoke-test /health via kubectl exec
+        run: |
+          POD=$(kubectl --context kind-${{ env.KIND_CLUSTER }} \
+                  get pod -n ${{ env.K8S_NAMESPACE }} \
+                  -l app=app \
+                  -o jsonpath='{.items[0].metadata.name}')
+          kubectl --context kind-${{ env.KIND_CLUSTER }} \
+            exec -n ${{ env.K8S_NAMESPACE }} "$POD" -- \
+            python3 -c "import urllib.request; resp = urllib.request.urlopen('http://localhost:8000/health'); assert resp.getcode() == 200; print('Health check OK:', resp.read().decode())"
+
+      - name: Verify Mission Control v2 heading in deployed dashboard
+        run: |
+          POD=$(kubectl --context kind-${{ env.KIND_CLUSTER }} \
+                  get pod -n ${{ env.K8S_NAMESPACE }} \
+                  -l app=app \
+                  -o jsonpath='{.items[0].metadata.name}')
+          kubectl --context kind-${{ env.KIND_CLUSTER }} \
+            exec -n ${{ env.K8S_NAMESPACE }} "$POD" -- \
+            grep -r "Mission Control v2" /app/frontend/dist
+
+      - name: Show final pod status
+        if: always()
+        run: |
+          kubectl --context kind-${{ env.KIND_CLUSTER }} \
+            get pods,svc,pvc -n ${{ env.K8S_NAMESPACE }}

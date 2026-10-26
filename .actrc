@@ -1,0 +1,22 @@
+# act configuration – run CI locally against the kind cluster
+#
+# Usage:
+#   act push                   # run the full CI pipeline
+#   act push -j backend-tests  # run one job only
+#   act push -j deploy         # build + deploy only
+#
+# act docs: https://nektosact.com/
+
+# Use the medium ubuntu runner image – smallest image that has Docker CLI,
+# Node 22 and Python 3.11 pre-installed.
+# If you want the full GitHub-hosted environment use 'catthehacker/ubuntu:full-latest'
+# (warning: ~60 GB download)
+-P ubuntu-latest=catthehacker/ubuntu:act-22.04
+
+# Bind the host Docker socket into the act container so that docker build,
+# kind create cluster, and kind load all work exactly as on real GitHub runners.
+--bind
+--container-daemon-socket /var/run/docker.sock
+
+# Keep containers between jobs (faster re-runs)
+--reuse

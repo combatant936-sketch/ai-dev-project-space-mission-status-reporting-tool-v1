@@ -80,7 +80,7 @@ describe("Dashboard Page with Charts (Issue #17)", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Mission Control Dashboard")).toBeDefined();
+      expect(screen.getByText("Mission Control v2")).toBeDefined();
     });
 
     // Check 3 stat cards
@@ -254,7 +254,7 @@ describe("Dashboard Page with Charts (Issue #17)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Mission Control Dashboard")).toBeDefined();
+      expect(screen.getByText("Mission Control v2")).toBeDefined();
     });
     unmount();
 
@@ -273,7 +273,7 @@ describe("Dashboard Page with Charts (Issue #17)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Mission Control Dashboard")).toBeDefined();
+      expect(screen.getByText("Mission Control v2")).toBeDefined();
     });
   });
 
