@@ -6,19 +6,16 @@ Welcome to the **Space Mission Status Reporting Tool** — a centralized flight 
 
 ## 📋 Table of Contents
 1. [System Overview & Roles](#-system-overview--roles)
-2. [Quick Start (Get Up and Running in 3 Steps)](#-quick-start-get-up-and-running-in-3-steps)
-3. [Ready-to-Use Demo Accounts](#-ready-to-use-demo-accounts)
-4. [Feature-by-Feature User Guide](#-feature-by-feature-user-guide)
-   - [1. Logging In and Out](#1-logging-in-and-out)
-   - [2. Mission Control Dashboard & Charts](#2-mission-control-dashboard--charts)
-   - [3. Viewing Missions (Fleet Manifest)](#3-viewing-missions-fleet-manifest)
-   - [4. Creating a New Mission](#4-creating-a-new-mission)
-   - [5. Editing Missions & Assigning Crew](#5-editing-missions--assigning-crew)
-   - [6. Submitting a Weekly Report (Team Member)](#6-submitting-a-weekly-report-team-member)
-   - [7. Reviewing Reports & Adding Feedback (Admin)](#7-reviewing-reports--adding-feedback-admin)
-5. [5-Minute Guided Testing Tour (End-to-End Checklist)](#-5-minute-guided-testing-tour-end-to-end-checklist)
-6. [Troubleshooting & Frequently Asked Questions](#-troubleshooting--frequently-asked-questions)
-7. [Running the Automated Test Suites](#-running-the-automated-test-suites)
+2. [🧼 Fresh Start: Resetting Database & Project State](#-fresh-start-resetting-database--project-state)
+3. [🐳 Option 1: One-Click Run with Docker (Recommended for Non-Tech Users)](#-option-1-one-click-run-with-docker-recommended-for-non-tech-users)
+4. [☸️ Option 2: Deploying to Kubernetes (k8s / kind)](#-option-2-deploying-to-kubernetes-k8s--kind)
+5. [🔄 Option 3: CI/CD Pipeline (Automated Testing & Deployment)](#-option-3-cicd-pipeline-automated-testing--deployment)
+6. [💻 Option 4: Manual Local Setup (Python & Node.js)](#-option-4-manual-local-setup-python--nodejs)
+7. [🔑 Ready-to-Use Demo Accounts](#-ready-to-use-demo-accounts)
+8. [📖 Feature-by-Feature User Guide](#-feature-by-feature-user-guide)
+9. [⏱️ End-to-End Guided Testing Checklist (All Features from Fresh DB)](#-end-to-end-guided-testing-checklist-all-features-from-fresh-db)
+10. [❓ Troubleshooting & Frequently Asked Questions](#-troubleshooting--frequently-asked-questions)
+11. [🧪 Running the Automated Test Suites](#-running-the-automated-test-suites)
 
 ---
 
@@ -33,11 +30,187 @@ The system is designed with two distinct roles:
 
 ---
 
-## ⚡ Quick Start (Get Up and Running in 3 Steps)
+## 🧼 Fresh Start: Resetting Database & Project State
+
+Before starting your testing tour, you can reset the system to an **entirely clean slate** (removing any old test missions or reports so only fresh initial seed data remains):
+
+### For Docker Users (Recommended)
+Run this single command in your terminal:
+```bash
+docker compose down -v
+```
+> 💡 **What this does**: The `-v` flag removes the persistent PostgreSQL database storage volume (`pgdata`). Next time you start, a pristine database is created and automatically seeded from scratch with clean initial records.
+
+### For Kubernetes Users
+Run:
+```bash
+kubectl delete -f k8s/
+```
+> 💡 **What this does**: Destroys the `space-mission` namespace, pods, deployments, and persistent storage volume claim, leaving zero leftover state.
+
+### For Local SQLite Users
+- **Windows (PowerShell)**: `Remove-Item -Force backend\dev.db -ErrorAction Ignore`
+- **macOS / Linux**: `rm -f backend/dev.db`
+
+---
+
+## 🐳 Option 1: One-Click Run with Docker (Recommended for Non-Tech Users)
+
+This is the easiest and most reliable way to run and test the complete system. You **do not need to install** Python, Node.js, Vite, or PostgreSQL on your computer — Docker packages and runs everything automatically.
 
 ### Prerequisites
-Make sure you have installed on your computer:
-- **Python 3.11+** with `uv` (or standard `pip` / `python`)
+- Install and launch **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (ensure the Docker whale icon shows running in your taskbar or menu bar).
+
+---
+
+### Step 1: Launch Everything with One Single Command
+Open a terminal (PowerShell, Command Prompt, or Terminal) in the project root directory and run:
+
+```bash
+docker compose up --build
+```
+
+### What Happens Automatically Behind the Scenes:
+1. **PostgreSQL Database**: Starts a Postgres 16 database container with automatic health monitoring.
+2. **Frontend Build**: Compiles the React + Vite frontend into optimized static files.
+3. **Database Migrations**: Automatically applies Alembic schema migrations (`alembic upgrade head`).
+4. **Data Seeder**: Automatically creates demo accounts and sample missions (`python seed.py`).
+5. **Combined Web Server**: Launches FastAPI + Uvicorn, serving the REST API and the React web app together on port `8000`.
+
+> ✅ **Success indicator**: In your terminal logs, you will see:
+> ```text
+> Application startup complete.
+> Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+> ```
+
+---
+
+### Step 2: Open the Application
+Open your web browser (Chrome, Edge, Firefox, or Safari) to:
+
+👉 **`http://localhost:8000`**
+
+Log in using the pre-configured [Demo Accounts](#-ready-to-use-demo-accounts) below!
+
+---
+
+### Step 3: Stopping and Resetting
+- **To stop the app**: Press `Ctrl + C` in the terminal, or run `docker compose down`.
+- **To reset to a fresh database**: Run `docker compose down -v`, then run `docker compose up --build`.
+
+---
+
+## ☸️ Option 2: Deploying to Kubernetes (k8s / kind)
+
+For testing the production Kubernetes deployment manifests located in the `k8s/` directory.
+
+### Prerequisites
+- Docker Desktop with **Kubernetes enabled** (Settings ⚙️ -> Kubernetes -> Check *Enable Kubernetes*), OR a local cluster like **[kind](https://kind.sigs.k8s.io/)** or **[minikube](https://minikube.sigs.k8s.io/)**.
+- `kubectl` command-line tool installed.
+
+---
+
+### Step 1: Build the Application Docker Image
+From the project root directory:
+
+```bash
+docker build -t ai-dev-project-app:latest .
+```
+*(If using `kind`, load the image into your cluster: `kind load docker-image ai-dev-project-app:latest --name space-mission`)*
+
+---
+
+### Step 2: Apply the Kubernetes Manifests
+Deploy the namespace, database, secrets, persistent storage, and application with one command:
+
+```bash
+kubectl apply -f k8s/
+```
+
+This creates:
+- `space-mission` dedicated namespace
+- `postgres-secret` (database credentials)
+- `postgres-pvc` (persistent volume storage)
+- `postgres` deployment & service (PostgreSQL database)
+- `app` deployment & service (FastAPI + React application)
+
+---
+
+### Step 3: Verify Pods Are Running
+Run:
+
+```bash
+kubectl get pods -n space-mission
+```
+
+> ✅ **Success indicator**: Both `app-...` and `postgres-...` will transition to:
+> `STATUS: Running` and `READY: 1/1`.
+
+---
+
+### Step 4: Access the Application via Port Forwarding
+Run:
+
+```bash
+kubectl port-forward -n space-mission svc/app-service 8000:8000
+```
+
+Open **`http://localhost:8000`** in your browser.
+
+---
+
+### Step 5: Clean Up Kubernetes Deployment
+When you are done testing:
+
+```bash
+kubectl delete -f k8s/
+```
+
+---
+
+## 🔄 Option 3: CI/CD Pipeline (Automated Testing & Deployment)
+
+The project includes an automated GitHub Actions CI/CD pipeline defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+### How the Pipeline Works:
+Whenever code is pushed or a pull request is opened, GitHub Actions executes **4 automated verification stages**:
+
+1. **Job 1: Frontend Tests (Vitest)**
+   - Spins up Node.js 22.
+   - Installs frontend packages.
+   - Executes all **47 React & Vitest unit tests** (login, forms, charts, context).
+2. **Job 2: Backend Tests (pytest + SQLite)**
+   - Spins up Python 3.11 with `uv`.
+   - Executes **66 backend pytest tests** (authentication, route guards, mission CRUD, reports).
+3. **Job 3: Integration Tests (PostgreSQL)**
+   - Spins up a live PostgreSQL 16 container service in GitHub Actions.
+   - Runs database migrations and validates cross-service database transactions.
+4. **Job 4: Automated Build & Deploy (kind Kubernetes)**
+   - Triggers **only if all 3 test jobs pass**.
+   - Generates a unique image tag (`SHA-timestamp`).
+   - Builds the production Docker image.
+   - Creates an ephemeral `kind` Kubernetes cluster on the runner.
+   - Deploys the full application and PostgreSQL database using `k8s/*.yaml`.
+   - Waits for rollout completion and performs automated HTTP `/health` smoke tests.
+
+### How a Non-Tech User Can Inspect the CI/CD Pipeline:
+1. Open this repository on **GitHub**.
+2. Click on the **Actions** tab at the top of the repository.
+3. Click on the latest workflow run titled **"CI"**.
+4. You will see green checkmarks (✅) next to all 4 jobs:
+   - `Frontend Tests (Vitest)`
+   - `Backend Tests (pytest + SQLite)`
+   - `Integration Tests (pytest + PostgreSQL)`
+   - `Build & Deploy to kind`
+
+---
+
+## 💻 Option 4: Manual Local Setup (Python & Node.js)
+
+For developers who want to run the frontend and backend directly on their host machine without Docker:
+
+### Prerequisites
+- **Python 3.11+** with `uv` (or standard `pip`)
 - **Node.js (v18+)** and `npm`
 
 ---
@@ -49,29 +222,29 @@ Open a terminal in the project directory and run:
 cd backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
-> ✅ **Success indicator**: You will see `Uvicorn running on http://127.0.0.1:8000`.
+> ✅ **Success indicator**: `Uvicorn running on http://127.0.0.1:8000`.
 
 ---
 
 ### Step 2: Seed the Demo Data (One-Time Setup)
-In a new terminal window, populate your database with sample missions and pre-configured accounts:
+In a new terminal window:
 
 ```bash
 cd backend
 uv run python seed.py
 ```
-> ✅ **Success indicator**: Output displays `Database successfully seeded with demo data!`.
+> ✅ **Success indicator**: `Database successfully seeded with demo data!`.
 
 ---
 
 ### Step 3: Start the Frontend Application
-In another terminal window, launch the interactive web interface:
+In another terminal window:
 
 ```bash
 cd frontend
 npm run dev
 ```
-> ✅ **Success indicator**: You will see `Local: http://localhost:5173/`. Open this URL in your web browser (Chrome, Edge, Firefox, or Safari).
+> ✅ **Success indicator**: `Local: http://localhost:5173/`. Open this URL in your web browser.
 
 ---
 
@@ -89,8 +262,13 @@ The database seed provides ready-to-test accounts:
 
 ## 📖 Feature-by-Feature User Guide
 
+> 💡 **Base URL Notice**:
+> - If you started the app with **Docker** or **Kubernetes**, open **`http://localhost:8000`**.
+> - If you started the app with **Manual Local Dev (npm run dev)**, open **`http://localhost:5173`**.
+> *(Both ports offer identical features; Docker & Kubernetes bundle frontend and backend together on port 8000).*
+
 ### 1. Logging In and Out
-1. Open your web browser to **`http://localhost:5173/login`**.
+1. Open your web browser to **`/login`** (e.g. `http://localhost:8000/login` or `http://localhost:5173/login`).
 2. Enter your **Email Address** and **Password** (e.g. `admin@nasa.gov` and `Password123!`).
 3. Click **"Sign In to Console"**.
 4. You will be authenticated with a secure cryptographic JSON Web Token (JWT) and redirected to the **Mission Control Dashboard**.
@@ -201,72 +379,111 @@ The Dashboard serves as the central operational hub:
 
 ---
 
-## ⏱️ 5-Minute Guided Testing Tour (End-to-End Checklist)
+## ⏱️ End-to-End Guided Testing Checklist (All Features from Fresh DB)
 
-Follow these 7 steps to test every feature in 5 minutes:
+Follow this 8-step guided checklist to test every feature across both user roles from a fresh database start:
 
-- [ ] **Step 1: Sign in as Flight Director**
-  - Go to `http://localhost:5173/login`.
-  - Enter `admin@nasa.gov` / `Password123!`.
-  - Verify you land on the **Mission Control Dashboard** with stat cards and the Doughnut chart.
+> 💡 **Base URL Reminder**:
+> - Running with **Docker** or **Kubernetes**: Open **`http://localhost:8000`**
+> - Running with **Manual Local Dev (Vite)**: Open **`http://localhost:5173`**
 
-- [ ] **Step 2: Inspect Missions Manifest**
-  - Click **"Missions"** in the top navigation.
-  - Verify you see existing missions (e.g., *Artemis III*).
-  - Click on a mission row to view its details and assigned flight crew.
+---
 
-- [ ] **Step 3: Create a New Mission**
-  - Click **"+ New Mission"**.
-  - Enter Title: `Mars Sample Return`.
-  - Set Status to `Planned`.
-  - Check the checkbox for `astronaut@nasa.gov`.
-  - Click **"Create Mission"** and verify it appears in the manifest.
+### 📋 Complete Feature Testing Walkthrough:
 
-- [ ] **Step 4: Switch to Team Member (Astronaut)**
+- [ ] **Step 1: Sign in as Flight Director (Admin)**
+  - Navigate to `/login`.
+  - Enter Email: `admin@nasa.gov` / Password: `Password123!`.
+  - Click **"Sign In to Console"**.
+  - ✅ **Verify**: You land on the **Mission Control Dashboard** with stat summary cards (Total Missions, Active Missions, Pending Reports) and an interactive Chart.js doughnut chart.
+
+- [ ] **Step 2: Inspect Missions Manifest & Crew Details (Admin)**
+  - In the top navigation bar, click **"Missions"**.
+  - ✅ **Verify**: You see the fleet table with mission titles, colored status badges, and creation dates.
+  - Click anywhere on a mission row (e.g. *Artemis III*).
+  - ✅ **Verify**: The Mission Detail page opens, displaying full flight specifications and assigned flight crew members.
+
+- [ ] **Step 3: Create a Brand New Space Mission (Admin)**
+  - In the top navigation bar, click **"Missions"**, then click the blue **"+ New Mission"** button.
+  - Fill out the form fields:
+    - **Mission Title**: `Europa Ice Explorer`
+    - **Description**: `Radar sounder survey of subsurface liquid water ocean.`
+    - **Status**: `Planned`
+    - **Assigned Flight Crew**: Check the boxes for `astronaut@nasa.gov` and `engineer@nasa.gov`.
+  - Click **"Create Mission"**.
+  - ✅ **Verify**: You are redirected to the Missions Manifest table, and `Europa Ice Explorer` appears in the list with a blue `Planned` badge.
+
+- [ ] **Step 4: Edit Flight Parameters & Status (Admin)**
+  - Click on your newly created `Europa Ice Explorer` mission row.
+  - Click the **"Edit Mission"** button.
+  - Change **Status** from `Planned` to `In Progress`.
+  - Click **"Save Changes"**.
+  - ✅ **Verify**: You are redirected to the detail page and the status badge is now yellow `In Progress`.
+
+- [ ] **Step 5: Sign Out & Switch to Team Member (Astronaut)**
   - Click **"Logout"** in the top navigation bar.
-  - Sign in as `astronaut@nasa.gov` / `Password123!`.
-  - Notice the navigation bar adapts: admins see management tabs; team members see **"Submit Report"**.
+  - Enter Email: `astronaut@nasa.gov` / Password: `Password123!`.
+  - Click **"Sign In to Console"**.
+  - ✅ **Verify**: The navigation bar dynamically adapts to the astronaut role — administrative management tabs are hidden, and **"Submit Report"** is prominently displayed.
 
-- [ ] **Step 5: Submit a Weekly Flight Report**
-  - Click **"Submit Report"**.
-  - In the **Mission** dropdown, select your newly assigned `Mars Sample Return` mission.
-  - Set Status: `In Progress`.
-  - Fill in Progress Update: `Lander heat shield vibration testing passed 100%.`
-  - Fill in Work Completed: `Completed 5 wind-tunnel simulation runs.`
-  - Fill in Blockers: `None.`
+- [ ] **Step 6: Submit a Weekly Operational Flight Report (Team Member)**
+  - Click **"Submit Report"** in the top navigation bar.
+  - Fill out the operational status report:
+    - **Mission**: Open the dropdown and select `Europa Ice Explorer`. *(Note: Only missions assigned to this astronaut appear in the list).*
+    - **Current Status**: `In Progress`
+    - **Progress Update**: `Cryogenic antenna deployed and frequency calibration completed.`
+    - **Work Completed**: `Ran 10 simulated deep-space telemetry transmission tests with 100% data integrity.`
+    - **Blockers**: `Minor solar panel actuator jitter observed, thermal blanket check scheduled.`
   - Click **"Submit Weekly Report"**.
-  - Verify you return to the Dashboard.
+  - ✅ **Verify**: You are redirected to the Dashboard. The **Pending Reports** stat card increments by 1, and your newly submitted report appears at the top of the Recent Reports feed with an amber `Pending` badge.
 
-- [ ] **Step 6: Review Report as Flight Director**
-  - Click **"Logout"** and sign back in as `admin@nasa.gov`.
-  - Click **"Review Reports"**.
-  - Locate the report just submitted for `Mars Sample Return` with status `Pending`.
-  - Click the row to open the modal.
-  - Add Admin Comment: `Approved for flight phase.`
-  - Click **"Mark as Reviewed"**.
-  - Verify the badge switches to `Reviewed` immediately!
+- [ ] **Step 7: Sign in as Flight Director to Review & Approve Report (Admin)**
+  - Click **"Logout"** and sign back in as `admin@nasa.gov` / `Password123!`.
+  - In the top navigation bar, click **"Review Reports"**.
+  - Locate the report for `Europa Ice Explorer` with the amber **`Pending`** badge.
+  - Click on the report row to open the full **Report Detail Modal**.
+  - In the **Admin Comment** text area, type: `Flight operations reviewed telemetry. Clear to proceed to orbital insertion phase.`
+  - Click the green **"Mark as Reviewed"** button.
+  - ✅ **Verify**: The status badge switches **instantly** to green `Reviewed` in the modal and updates in real-time in the background table without any page refresh! Close the modal.
 
-- [ ] **Step 7: Check Live Dashboard Metrics**
-  - Click **"Dashboard"**.
-  - Notice that Total Missions and Active Missions reflect the new mission, the chart reflects the updated status, and your reviewed report appears in Recent Reports.
+- [ ] **Step 8: Verify Live Real-Time Dashboard Analytics**
+  - Click **"Dashboard"** in the top navigation bar.
+  - ✅ **Verify**:
+    - **Total Missions** reflects all missions including your newly created one.
+    - **Active Missions** reflects missions currently marked `In Progress`.
+    - **Pending Reports** has updated to `0` because you just approved the report.
+    - **Interactive Chart**: The doughnut chart reflects the updated status breakdown. Hovering your mouse over any segment displays the exact count.
+    - **Recent Reports**: Shows your newly approved report with a green `Reviewed` badge.
 
 ---
 
 ## ❓ Troubleshooting & Frequently Asked Questions
 
 ### 1. "Network error: Could not reach the server" on login
-- **Cause**: The backend FastAPI server is not currently running.
-- **Solution**: Open a terminal, run `cd backend` followed by `uv run uvicorn app.main:app --reload --port 8000`.
+- **Cause**: The backend server is not running.
+- **Solution**:
+  - If using **Docker**: Ensure Docker Desktop is running and run `docker compose up --build`.
+  - If using **Local Dev**: Run `cd backend` followed by `uv run uvicorn app.main:app --reload --port 8000`.
 
 ### 2. "Invalid email or password" on login
 - **Cause**: The database has not been seeded with test accounts yet.
-- **Solution**: In your terminal, run `cd backend` and `uv run python seed.py`.
+- **Solution**:
+  - If using **Docker**: Run `docker compose down -v && docker compose up --build`.
+  - If using **Local Dev**: In your terminal, run `cd backend` and `uv run python seed.py`.
 
-### 3. "No missions assigned" when trying to submit a report
+### 3. "Port 8000 already in use" (Docker)
+- **Cause**: Another service or a previous instance of uvicorn is using port 8000.
+- **Solution**: Stop any running uvicorn terminals or run `docker compose down`.
+
+### 4. Kubernetes pod status stuck in `ContainerCreating`
+- **Cause**: Initial image download or initialization is in progress.
+- **Solution**: Wait 30 seconds, or run `kubectl describe pod -n space-mission` to inspect Kubernetes events.
+
+### 5. "No missions assigned" when trying to submit a report
 - **Cause**: You are logged in as a Team Member who has not been assigned to any missions.
 - **Solution**: Log in as Admin (`admin@nasa.gov`), go to `Missions`, click **Edit** on a mission, check your astronaut's email address under *Assigned Flight Crew*, and click **Save Changes**.
 
-### 4. How do I inspect the backend API directly?
+### 6. How do I inspect the backend API directly?
 - Open your browser to **`http://localhost:8000/docs`** to explore the interactive FastAPI Swagger UI, test endpoints, and view request/response schemas.
 
 ---
